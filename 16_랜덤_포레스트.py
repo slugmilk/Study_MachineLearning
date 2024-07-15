@@ -14,8 +14,10 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-hotel_df = pd.read_csv('/content/drive/MyDrive/컴퓨터비전 시즌2/3. 데이터 분석/Data/hotel.csv')
-hotel_df.head()
+from google.colab import drive
+drive.mount('/content/drive')
+
+hotel_df = pd.read_csv('/content/drive/MyDrive/컴퓨터비전_시즌2/3. 데이터 분석/Data/hotel.csv')
 
 hotel_df.info()
 
@@ -225,12 +227,147 @@ rf.fit(X_train, y_train)
 pred1 = rf.predict(X_test)
 pred1
 
-preba1 = rf.predict_proba(X_test)
-preba1
+proba1 = rf.predict_proba(X_test)
+proba1
 
 # 첫번째 테스트 데이터에 대한 예측 결과
-preba1[0]
+proba1[0]
 
 # 모든 테스트 데이터에 대한 호텔 예약을 취소할 확률만 출력
-preba1[:, 1]
+proba1[:, 1]
+
+"""# **4. 머신러닝/딥러닝에서 모델의 성능을 평가하는 데 사용되는 측정값**
+* Accuracy: 올바른 에측의 비율 (정밍도)
+* Precision: 모델에서 수행한 총 긍정 예측 수에 대한 참 긍정 예측의 비율
+* Recall: 실제 긍정 사례의 총 수에 대한 참 긍정 예측의 비율 (재현율)
+* F1 Score: 정밀도와 재현율의 조화평균이며, 정밀도와 재현율 간의 균형을 맞추기 위한 단일 메트릭으로 사용
+* AUC-ROC Curve: 참양성률(TPR)과 가양성률(FPR) 간의 균형을 측정
+  * 예: TPR: 실제로 질병이 있을 때, 검사 결과가 양성인 경우
+  * 예: FPR: 실제로 질병이 없을 때, 검사 결과가 음성인 경우
+  * ROC: 이진 분류의 성능을 보여주는 그래프. 민감도(TPR)와 특이도(FPR) 사이의 관계
+  * AUC: ROC 커브와 직선 사이의 면적을 의미. 범위는 0.5~1이며, 값이 클수록 예측의 정확도 높음
+
+  <center><img src='https://miro.medium.com/v2/resize:fit:722/1*pk05QGzoWhCgRiiFbz-oKQ.png'></center>
+  
+  *AOC 오타임*
+
+  <center><img src='https://www.datasciencecentral.com/wp-content/uploads/2021/10/1341805045.jpg'></center>
+  
+  *오른쪽으로 갈수록 잘 분류된 모델*
+
+  * AUC = 1
+    * 두 개의 곡선이 전혀 겹치지 않는 경우 모델은 가장 이상적인 분류 성능을 보임
+    * 양성 클래스와 음성 클래스를 완벽하게 구별할 수 있음
+  * AUC = 0.75
+    * 설정한 theshold에 따라 오류값들을 최소화 또는 최대화 할 수 있음
+    * 해당 분류 모델이 양성 클래스와 음성 클래스를 구별할 수 있는 확률이 75%임을 의미
+  * AUC = 0.5
+    * 분류 모델의 성능이 최악인 상황
+    * 해당 분류 모델은 양성 클래스와 음성 클래스를 구분할 수 있는 능력이 없음
+
+
+"""
+
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_auc_score
+
+accuracy_score(y_test, pred1)
+
+confusion_matrix(y_test, pred1)
+
+print(classification_report(y_test, pred1))
+
+roc_auc_score(y_test, proba1[:, 1])
+
+# 하이퍼 파라미터 수정 (max_depth=30을 적용)
+rf2 = RandomForestClassifier(max_depth=30, random_state=2024)
+rf2.fit(X_train, y_train)
+proba2 = rf2.predict_proba(X_test)
+roc_auc_score(y_test, proba2[:, 1])
+
+# 하이퍼 파라미터 수정 후 (성능 증가)
+0.9319781899069026 - 0.9315576511541386
+
+# 하이퍼 파라미터 수정(max_depth=30, min_samples_split=5, n_estimators=120을 적용)
+rf3 = RandomForestClassifier(max_depth=30, random_state=2024,
+                             min_samples_split=5, n_estimators=120)
+rf3.fit(X_train, y_train)
+proba3 = rf3.predict_proba(X_test)
+roc_auc_score(y_test, proba3[:, 1])
+
+# 하이퍼 파라미터 추가 수정 후 (성능 감소)
+0.931059217235636 - 0.9319781899069026
+
+"""# **5. 하이퍼 파라미터 최적의 값 찾기**
+* GridSearchCV: 원하는 모든 하이퍼 파라미터를 적용하여 최적의 값을 찾음
+* RandomizedSearchCV: 원하는 하이퍼 파라미터를 지정하고 n_iter값을 설정하여 해당 수 만큼 random하게 조합하여 최적의 값을 찾음
+"""
+
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+
+params = {
+    'max_depth': [30, 40],
+    'min_samples_split': [2, 3],
+    'n_estimators': [100, 120]
+}
+
+rf4 = RandomForestClassifier(random_state = 2024)
+# grid_df = GridSearchCV(rf4, params, cv=5) cv: 교차검증 횟수
+grid_df = GridSearchCV(rf4, params)
+grid_df.fit(X_train, y_train)
+
+grid_df.cv_results_
+# 'rank_test_score': array([4, 1, 5, 6, 7, 8, 2, 3], dtype=int32)}: 두번쨰 파라미터 조합이 가장 성능 좋음
+
+grid_df.best_params_ # 가장 좋은 파라미터 조합
+
+rf5 = RandomForestClassifier(random_state=2024)
+rand_df = RandomizedSearchCV(rf5, params, n_iter=3, random_state=2024) # n_iter=3 : 8개의 파라미터 조합 중 랜덤하게 3개 뽑음
+rand_df.fit(X_train, y_train)
+
+rand_df.cv_results_
+# 랜덤으로 선택된 파라미터: [{'n_estimators': 120, 'min_samples_split': 2, 'max_depth': 30}, {'n_estimators': 100, 'min_samples_split': 3, 'max_depth': 40}, {'n_estimators': 100, 'min_samples_split': 2, 'max_depth': 40}]
+
+rand_df.best_params_
+
+proba5 = rand_df.predict_proba(X_test)
+
+import matplotlib.pyplot as plt
+from sklearn.metrics._plot.roc_curve import roc_curve
+
+fpr, tpr, thr = roc_curve(y_test, proba5[:, 1])
+print(fpr, tpr, thr)
+
+plt.plot(fpr, tpr, label='ROC Curve')
+plt.plot([0, 1], [0, 1])
+plt.show()
+
+"""# **6. 피처 중요도(Feature Importances)**
+* 결정 나무에서 노드를 분기할 때 해당 피처가 클래스를 나누는데 얼마나 영향을 미쳤는지 표기하는 척도
+* 0에 가까우면 클래스를 구분하는데 해당 피처의 영향이 거의 없다는 것이며, 1에 가까우면 해당 피처가 클래스를 나누는데 영향을 많이 줬다는 의미
+"""
+
+# {'n_estimators': 120, 'min_samples_split': 2, 'max_depth': 30}
+rf6 = RandomForestClassifier(random_state=2024, max_depth=30, min_samples_split=2, n_estimators=120)
+rf6.fit(X_train, y_train)
+proba6 = rf6.predict_proba(X_test)
+roc_auc_score(y_test, proba6[:, 1])
+
+proba6
+
+rf6.feature_importances_
+
+1.25445350e-01
+
+feature_imp = pd.DataFrame({
+    'features': X_train.columns,
+    'importances': rf6.feature_importances_
+})
+
+feature_imp
+
+top10 = feature_imp.sort_values('importances', ascending=False).head(10)
+top10
+
+plt.figure(figsize=(5, 10))
+sns.barplot(x='importances', y='features', data=top10, palette='Set2')
 
